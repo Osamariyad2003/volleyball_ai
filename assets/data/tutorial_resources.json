@@ -1,0 +1,187 @@
+{
+  "tutorialVideos": [
+    {
+      "id": 1,
+      "title": "Complete Volleyball Tutorial",
+      "url": "https://www.youtube.com/watch?v=o7nZ8TIhHQM",
+      "description": "Full beginner rules and skills [web:5]",
+      "level": "beginner"
+    },
+    {
+      "id": 2,
+      "title": "Passing Tutorial",
+      "url": "https://www.youtube.com/watch?v=gOgfoEGUDCA",
+      "description": "Forearm pass steps [web:7]",
+      "level": "beginner"
+    },
+    {
+      "id": 3,
+      "title": "Serving for Beginners",
+      "url": "https://www.youtube.com/watch?v=TBC_1c5kS3o",
+      "description": "Underhand/overhand [web:41]",
+      "level": "beginner"
+    },
+    {
+      "id": 4,
+      "title": "Setting Progression",
+      "url": "https://www.youtube.com/watch?v=kLuxE4nUQwg",
+      "description": "Step-by-step guide [web:46]",
+      "level": "beginner-intermediate"
+    },
+    {
+      "id": 5,
+      "title": "Pairs Digging/Passing",
+      "url": "https://www.youtube.com/watch?v=Rm0yvvBx7oc",
+      "description": "Grade 3-6 digging [web:51]",
+      "level": "beginner"
+    },
+    {
+      "id": 6,
+      "title": "3 Keys to Digging Spikes",
+      "url": "https://www.youtube.com/watch?v=vMZ3oD1fbvk",
+      "description": "Spike defense tips [web:52]",
+      "level": "intermediate"
+    }
+  ],
+  "drillCollections": [
+    {
+      "id": 1,
+      "title": "10 Beginner Drills",
+      "url": "https://coachingvb.com/10-beginner-volleyball-drills-every-coach-needs/",
+      "source": "coachingvb.com [web:8]",
+      "focus": "fundamentals"
+    },
+    {
+      "id": 2,
+      "title": "Full Collection",
+      "url": "https://coachingvb.com/volleyball-drills-collection/",
+      "source": "coachingvb.com [web:15]",
+      "focus": "all skills"
+    },
+    {
+      "id": 3,
+      "title": "35 Beach Drills",
+      "url": "https://www.betteratbeach.com/volleyball-drills",
+      "source": "betteratbeach.com [web:11]",
+      "focus": "competitive"
+    }
+  ],
+  "servingResources": [
+    {
+      "id": 1,
+      "title": "Serving Progression Drill",
+      "url": "https://www.youtube.com/watch?v=pREhctojFPY",
+      "description": "Toss technique [web:43]",
+      "level": "beginner"
+    },
+    {
+      "id": 2,
+      "title": "Overhand Serve",
+      "url": "https://www.youtube.com/watch?v=-B3OEckTZPQ",
+      "description": "Over net drill [web:44]",
+      "level": "intermediate"
+    },
+    {
+      "id": 3,
+      "title": "Eliminate Bad Habits",
+      "url": "https://jvavolleyball.org/serving-drills-train-proper-technique-eliminate-bad-habits/",
+      "description": "Consistency drills [web:42]",
+      "level": "beginner"
+    }
+  ],
+  "settingResources": [
+    {
+      "id": 1,
+      "title": "Setting Progression",
+      "url": "https://www.youtube.com/watch?v=kLuxE4nUQwg",
+      "description": "Self to partner [web:46]",
+      "level": "beginner-intermediate"
+    }
+  ],
+  "spikingResources": [
+    {
+      "id": 1,
+      "title": "Improved Spiking",
+      "url": "https://kbandstraining.com/volleyball-drills-for-improved-spiking/",
+      "description": "Approach jumps [web:47]",
+      "level": "intermediate"
+    }
+  ],
+  "blockingResources": [
+    {
+      "id": 1,
+      "title": "Ultimate Blocking Guide",
+      "url": "https://www.allvolleyball.com/blogs/news/the-ultimate-guide-to-blocking-in-volleyball",
+      "description": "Mirror drills [web:48]",
+      "level": "all"
+    }
+  ],
+  "diggingDefenseResources": [
+    {
+      "id": 1,
+      "title": "100+ Digging Drills",
+      "url": "https://volleyballxl.com/drills/digging/",
+      "description": "Technique + sessions [web:53]",
+      "level": "beginner-advanced"
+    },
+    {
+      "id": 2,
+      "title": "12 Defense Drills",
+      "url": "https://valleyathletics.co/blog/volleyball-defense-drills/",
+      "description": "Dig or Die, Pepper [web:56]",
+      "level": "all"
+    },
+    {
+      "id": 3,
+      "title": "Cross-Court Digging",
+      "url": "https://coachingvb.com/drill-continuous-cross-court-digging/",
+      "description": "High-intensity fitness [web:55]",
+      "level": "intermediate"
+    }
+  ],
+  "warmUpResources": [
+    {
+      "id": 1,
+      "title": "Warm-Up Drills",
+      "url": "https://planet.training/volleyball-training/drills-warm-up",
+      "description": "Shuffles, star drill [web:57]",
+      "level": "all"
+    }
+  ],
+  "conditioningResources": [
+    {
+      "id": 1,
+      "title": "20 Conditioning Drills",
+      "url": "https://valleyathletics.co/blog/volleyball-conditioning-drills/",
+      "description": "Box jumps, planks [web:58]",
+      "level": "all"
+    }
+  ],
+  "teamBuildingResources": [
+    {
+      "id": 1,
+      "title": "Team Building Drills",
+      "url": "https://coachingvb.com/volleyball-team-building-drills/",
+      "description": "Cooperative 3s [web:59]",
+      "level": "all"
+    }
+  ],
+  "advancedResources": [
+    {
+      "id": 1,
+      "title": "Elite Drills",
+      "url": "https://gmtm.com/articles/elevating-your-game-advanced-volleyball-drills-for-elite-athletes",
+      "description": "Transition, spins [web:49]",
+      "level": "advanced"
+    }
+  ],
+  "coachingGuides": [
+    {
+      "id": 1,
+      "title": "First-Time Coach",
+      "url": "https://www.theartofcoachingvolleyball.com/first-time-coach/",
+      "source": "theartofcoachingvolleyball.com [web:9]",
+      "focus": "structure"
+    }
+  ]
+}
