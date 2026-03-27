@@ -36,8 +36,7 @@ class MatchesOverviewController extends Notifier<MatchesOverviewState> {
 
       return switch (state.selectedFilter) {
         MatchesFilter.men => normalized == 'men' || normalized == 'male',
-        MatchesFilter.women =>
-          normalized == 'women' || normalized == 'female',
+        MatchesFilter.women => normalized == 'women' || normalized == 'female',
         MatchesFilter.all => true,
       };
     }).toList();
@@ -61,7 +60,7 @@ class MatchesOverviewController extends Notifier<MatchesOverviewState> {
     } catch (error) {
       state = state.copyWith(
         isLoadingCompetitions: false,
-        pageError: error.toString(),
+        pageError: _displayMessage(error),
       );
     }
   }
@@ -97,14 +96,11 @@ class MatchesOverviewController extends Notifier<MatchesOverviewState> {
 
     try {
       final matches = await _matchesRepository.getSeasonMatches(season.id);
-      state = state.copyWith(
-        matches: matches,
-        isLoadingSelection: false,
-      );
+      state = state.copyWith(matches: matches, isLoadingSelection: false);
     } catch (error) {
       state = state.copyWith(
         isLoadingSelection: false,
-        pageError: error.toString(),
+        pageError: _displayMessage(error),
       );
     }
   }
@@ -134,7 +130,8 @@ class MatchesOverviewController extends Notifier<MatchesOverviewState> {
 
     final current = state.selectedCompetition;
     final nextCompetition =
-        current != null && filtered.any((competition) => competition.id == current.id)
+        current != null &&
+            filtered.any((competition) => competition.id == current.id)
         ? current
         : filtered.first;
 
@@ -186,7 +183,7 @@ class MatchesOverviewController extends Notifier<MatchesOverviewState> {
     } catch (error) {
       state = state.copyWith(
         isLoadingSelection: false,
-        pageError: error.toString(),
+        pageError: _displayMessage(error),
       );
     }
   }
@@ -228,5 +225,15 @@ class MatchesOverviewController extends Notifier<MatchesOverviewState> {
 
   String _normalizeGender(String? value) {
     return (value ?? '').trim().toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+  }
+
+  String _displayMessage(Object error) {
+    if (error is StateError) {
+      return error.message;
+    }
+
+    final raw = error.toString();
+    const prefix = 'Bad state: ';
+    return raw.startsWith(prefix) ? raw.substring(prefix.length) : raw;
   }
 }

@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 
 import '../core/coaching_prompts.dart';
 import 'models/coach_models.dart';
@@ -11,53 +13,25 @@ const defaultFallbackFollowups = <String>[
   "Who's their weakest passer?",
 ];
 
-class GeminiCoachService {
-  GeminiCoachService(this.apiKey)
-    : _liveModel = _buildModel(
-        apiKey: apiKey,
-        prompt: liveCoachPrompt,
-        temperature: 0.4,
-        maxOutputTokens: 256,
-      ),
-      _timeoutModel = _buildModel(
-        apiKey: apiKey,
-        prompt: timeoutPrompt,
-        temperature: 0.3,
-        maxOutputTokens: 128,
-      ),
-      _debriefModel = _buildModel(
-        apiKey: apiKey,
-        prompt: debriefPrompt,
-        temperature: 0.4,
-        maxOutputTokens: 1024,
-      ),
-      _drillModel = _buildModel(
-        apiKey: apiKey,
-        prompt: drillPrompt,
-        temperature: 0.5,
-        maxOutputTokens: 512,
-      ),
-      _videoScoutModel = _buildModel(
-        apiKey: apiKey,
-        prompt: videoScoutPrompt,
-        temperature: 0.3,
-        maxOutputTokens: 192,
-      );
+class HuggingFaceCoachService {
+  HuggingFaceCoachService({required http.Client client, required String token})
+    : _client = client,
+      _token = token;
 
-  final String apiKey;
-  final GenerativeModel? _liveModel;
-  final GenerativeModel? _timeoutModel;
-  final GenerativeModel? _debriefModel;
-  final GenerativeModel? _drillModel;
-  final GenerativeModel? _videoScoutModel;
+  static const _endpoint = 'https://router.huggingface.co/v1/chat/completions';
+  static const _textModel = 'CohereLabs/c4ai-command-r7b-12-2024';
+  static const _visionModel = 'CohereLabs/aya-vision-32b';
 
-  bool get isConfigured => apiKey.trim().isNotEmpty;
+  final http.Client _client;
+  final String _token;
+
+  bool get isConfigured => _token.trim().isNotEmpty;
 
   Future<CoachResponse> askLive(MatchSession match, String question) async {
-    if (!isConfigured || _liveModel == null) {
+    if (!isConfigured) {
       return const CoachResponse(
         text:
-            'Add your Gemini API key in Settings so I can answer live coaching questions.',
+            'Add HF_TOKEN in .env so I can answer live coaching questions with Hugging Face.',
         followups: defaultFallbackFollowups,
         confidence: 0.25,
         mode: 'live',
@@ -75,17 +49,24 @@ COACH ASKS: $question
 ''';
 
     try {
-      final response = await _liveModel.generateContent([Content.text(prompt)]);
+      final responseText = await _createChatCompletion(
+        model: _textModel,
+        systemPrompt: liveCoachPrompt,
+        userContent: prompt,
+        maxTokens: 256,
+        temperature: 0.35,
+      );
+
       return CoachResponse(
-        text: _cleanResponse(response.text, 'I need more data to answer that.'),
+        text: _cleanResponse(responseText, 'I need more data to answer that.'),
         followups: _generateFollowups(question),
-        confidence: match.rallies.length > 10 ? 0.85 : 0.55,
+        confidence: match.rallies.length > 10 ? 0.85 : 0.58,
         mode: 'live',
       );
     } catch (_) {
       return const CoachResponse(
         text:
-            'I lost the line to Gemini for a moment. Ask me again in one sentence.',
+            'Hugging Face did not answer that cleanly. Ask again in one short sentence.',
         followups: defaultFallbackFollowups,
         confidence: 0.2,
         mode: 'live',
@@ -94,7 +75,7 @@ COACH ASKS: $question
   }
 
   Future<CoachResponse> quickTimeout(MatchSession match) async {
-    if (!isConfigured || _timeoutModel == null) {
+    if (!isConfigured) {
       return const CoachResponse(
         text:
             'When they speed us up in serve receive, we need to settle first contact and attack high hands.',
@@ -112,12 +93,17 @@ Give me the ONE most impactful adjustment for this timeout.
 ''';
 
     try {
-      final response = await _timeoutModel.generateContent([
-        Content.text(prompt),
-      ]);
+      final responseText = await _createChatCompletion(
+        model: _textModel,
+        systemPrompt: timeoutPrompt,
+        userContent: prompt,
+        maxTokens: 160,
+        temperature: 0.25,
+      );
+
       return CoachResponse(
         text: _cleanResponse(
-          response.text,
+          responseText,
           'Regroup and focus on serve receive.',
         ),
         followups: const [
@@ -139,10 +125,10 @@ Give me the ONE most impactful adjustment for this timeout.
   }
 
   Future<CoachResponse> debrief(MatchSession match) async {
-    if (!isConfigured || _debriefModel == null) {
+    if (!isConfigured) {
       return const CoachResponse(
         text:
-            'Match data is saved locally, but Gemini needs an API key before I can deliver a spoken debrief.',
+            'Match data is saved locally, but HF_TOKEN is required before I can deliver a spoken debrief.',
         followups: <String>[
           'What drills should we run next?',
           'Which rotation hurt us most?',
@@ -163,12 +149,17 @@ Give me a complete post-match debrief.
 ''';
 
     try {
-      final response = await _debriefModel.generateContent([
-        Content.text(prompt),
-      ]);
+      final responseText = await _createChatCompletion(
+        model: _textModel,
+        systemPrompt: debriefPrompt,
+        userContent: prompt,
+        maxTokens: 900,
+        temperature: 0.4,
+      );
+
       return CoachResponse(
         text: _cleanResponse(
-          response.text,
+          responseText,
           'Match data insufficient for debrief.',
         ),
         followups: const [
@@ -196,10 +187,10 @@ Give me a complete post-match debrief.
     MatchSession match,
     String weakness,
   ) async {
-    if (!isConfigured || _drillModel == null) {
+    if (!isConfigured) {
       return const CoachResponse(
         text:
-            'Add your Gemini API key in Settings, then I can turn that weakness into a practical drill.',
+            'Add HF_TOKEN in .env, then I can turn that weakness into a practical drill.',
         followups: <String>[
           'Give me a serve receive drill',
           'Give me a blocking drill',
@@ -219,14 +210,16 @@ Design a practice drill to fix this.
 ''';
 
     try {
-      final response = await _drillModel.generateContent([
-        Content.text(prompt),
-      ]);
+      final responseText = await _createChatCompletion(
+        model: _textModel,
+        systemPrompt: drillPrompt,
+        userContent: prompt,
+        maxTokens: 420,
+        temperature: 0.45,
+      );
+
       return CoachResponse(
-        text: _cleanResponse(
-          response.text,
-          'Practice more serve receive reps.',
-        ),
+        text: _cleanResponse(responseText, 'Practice more serve receive reps.'),
         followups: const ['Another drill?', 'Warm-up version?'],
         confidence: 0.8,
         mode: 'drill',
@@ -244,12 +237,13 @@ Design a practice drill to fix this.
 
   Future<CoachResponse> analyzeVideoFrame(
     MatchSession match,
-    Uint8List imageBytes,
-  ) async {
-    if (!isConfigured || _videoScoutModel == null) {
+    Uint8List imageBytes, {
+    String sourceLabel = 'live court frame',
+  }) async {
+    if (!isConfigured) {
       return const CoachResponse(
         text:
-            'Add your Gemini API key in Settings so I can scout live video frames during the match.',
+            'Add HF_TOKEN in .env so I can scout live frames with Hugging Face.',
         followups: <String>[
           'Capture another frame',
           'What should we watch in serve receive?',
@@ -259,34 +253,61 @@ Design a practice drill to fix this.
       );
     }
 
+    final preparedBytes = _prepareVisionBytes(imageBytes);
+    final base64Image = base64Encode(preparedBytes);
+    final imageUrl = 'data:image/jpeg;base64,$base64Image';
     final prompt =
         '''
 ${_buildMatchContext(match)}
 
-Analyze this live match frame and give me the most useful bench-side coaching cue right now.
+FRAME SOURCE: $sourceLabel
+
+Analyze this volleyball frame for bench-side coaching.
+Do not default to "Frame unclear" just because the full court is not visible.
+If you can see at least one side of the net, three or more players, a receiving shape, or the blocker/defender alignment, give a best-effort partial read.
+If enough of the court is visible, answer with exactly:
+ACTION: one label from [Serve, Serve Receive, Set, Attack, Block, Defense, Transition, Coverage, Free Ball, Unknown]
+READ: what the shape or spacing shows
+RISK: the most exploitable issue
+CUE: one immediate coaching instruction
+
+If the frame is genuinely too tight, blurry, dark, or missing almost all player context, answer with:
+ACTION: Unknown
+READ: Frame unclear.
+CUE: the exact better angle or wider view needed
 ''';
 
     try {
-      final response = await _videoScoutModel.generateContent([
-        Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
-      ]);
+      final responseText = await _createChatCompletion(
+        model: _visionModel,
+        systemPrompt: videoScoutPrompt,
+        userContent: [
+          {'type': 'text', 'text': prompt},
+          {
+            'type': 'image_url',
+            'image_url': {'url': imageUrl},
+          },
+        ],
+        maxTokens: 280,
+        temperature: 0.2,
+      );
 
       return CoachResponse(
         text: _cleanResponse(
-          response.text,
-          'The frame is not clear enough. Try a wider angle that shows both blockers and the backcourt shape.',
+          responseText,
+          'READ: Frame unclear.\nCUE: Capture a wider angle that shows both blockers, the setter lane, and the backcourt shape.',
         ),
         followups: const [
           'Capture another frame',
           'What should we cue next rotation?',
         ],
-        confidence: 0.72,
+        confidence: 0.76,
         mode: 'vision',
       );
     } catch (_) {
       return const CoachResponse(
         text:
-            'I could not read that live frame clearly. Try capturing the full court so I can scout spacing and defensive shape.',
+            'I could not analyze that frame right now. Try again in steadier light, or upload a replay clip and scout a paused frame.',
         followups: <String>[
           'Capture another frame',
           'What should we watch in transition?',
@@ -295,6 +316,90 @@ Analyze this live match frame and give me the most useful bench-side coaching cu
         mode: 'vision',
       );
     }
+  }
+
+  Future<String> _createChatCompletion({
+    required String model,
+    required String systemPrompt,
+    required Object userContent,
+    required int maxTokens,
+    required double temperature,
+  }) async {
+    final response = await _client.post(
+      Uri.parse(_endpoint),
+      headers: {
+        'Authorization': 'Bearer $_token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': model,
+        'messages': [
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userContent},
+        ],
+        'max_tokens': maxTokens,
+        'temperature': temperature,
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(
+        'Hugging Face request failed (${response.statusCode}): ${response.body}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected Hugging Face response payload.');
+    }
+
+    final content = _extractAssistantContent(decoded).trim();
+    if (content.isEmpty) {
+      throw const FormatException('Empty assistant response.');
+    }
+
+    return content;
+  }
+
+  String _extractAssistantContent(Map<String, dynamic> payload) {
+    final choices = payload['choices'];
+    if (choices is! List || choices.isEmpty) {
+      return '';
+    }
+
+    final firstChoice = choices.first;
+    if (firstChoice is! Map<String, dynamic>) {
+      return '';
+    }
+
+    final message = firstChoice['message'];
+    if (message is! Map<String, dynamic>) {
+      return '';
+    }
+
+    final content = message['content'];
+    if (content is String) {
+      return content;
+    }
+
+    if (content is List) {
+      final buffer = StringBuffer();
+      for (final item in content) {
+        if (item is! Map<String, dynamic>) {
+          continue;
+        }
+        final text = item['text'];
+        if (text is String && text.trim().isNotEmpty) {
+          if (buffer.isNotEmpty) {
+            buffer.writeln();
+          }
+          buffer.write(text.trim());
+        }
+      }
+      return buffer.toString();
+    }
+
+    return '';
   }
 
   String _buildMatchContext(MatchSession match) {
@@ -393,24 +498,16 @@ Analyze this live match frame and give me the most useful bench-side coaching cu
     return defaultFallbackFollowups;
   }
 
-  static GenerativeModel? _buildModel({
-    required String apiKey,
-    required String prompt,
-    required double temperature,
-    required int maxOutputTokens,
-  }) {
-    if (apiKey.trim().isEmpty) {
-      return null;
+  Uint8List _prepareVisionBytes(Uint8List bytes) {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      return bytes;
     }
 
-    return GenerativeModel(
-      model: 'gemini-2.0-flash',
-      apiKey: apiKey,
-      systemInstruction: Content.text(prompt),
-      generationConfig: GenerationConfig(
-        temperature: temperature,
-        maxOutputTokens: maxOutputTokens,
-      ),
-    );
+    final normalized = decoded.width > 1440
+        ? img.copyResize(decoded, width: 1440)
+        : decoded;
+
+    return Uint8List.fromList(img.encodeJpg(normalized, quality: 90));
   }
 }

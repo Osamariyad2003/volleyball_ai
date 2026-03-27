@@ -20,12 +20,17 @@ class CompetitionRepository {
 
     try {
       final response = await _client.getCompetitions();
-      if (response.statusCode == 200) {
-        final data = CompetitionsResponse.fromJson(response.data);
-        _competitionsCache = data.competitions;
-        return data.competitions;
+      if (response.statusCode != 200) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.badResponse,
+        );
       }
-      throw Exception('Failed to load competitions');
+
+      final data = CompetitionsResponse.fromJson(response.data);
+      _competitionsCache = data.competitions;
+      return data.competitions;
     } on DioException catch (e) {
       throw StateError(_mapDioError(e, resource: 'competitions'));
     }
@@ -39,12 +44,17 @@ class CompetitionRepository {
 
     try {
       final response = await _client.getCompetitionSeasons(competitionUrn);
-      if (response.statusCode == 200) {
-        final data = SeasonsResponse.fromJson(response.data);
-        _seasonsCache[competitionUrn] = data.seasons;
-        return data.seasons;
+      if (response.statusCode != 200) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.badResponse,
+        );
       }
-      throw Exception('Failed to load seasons');
+
+      final data = SeasonsResponse.fromJson(response.data);
+      _seasonsCache[competitionUrn] = data.seasons;
+      return data.seasons;
     } on DioException catch (e) {
       throw StateError(_mapDioError(e, resource: 'seasons'));
     }
@@ -58,12 +68,17 @@ class CompetitionRepository {
 
     try {
       final response = await _client.getCompetitionInfo(competitionUrn);
-      if (response.statusCode == 200) {
-        final data = CompetitionInfoModel.fromJson(response.data);
-        _competitionInfoCache[competitionUrn] = data;
-        return data;
+      if (response.statusCode != 200) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.badResponse,
+        );
       }
-      throw Exception('Failed to load competition info');
+
+      final data = CompetitionInfoModel.fromJson(response.data);
+      _competitionInfoCache[competitionUrn] = data;
+      return data;
     } on DioException catch (e) {
       throw StateError(_mapDioError(e, resource: 'competition info'));
     }

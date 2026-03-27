@@ -122,6 +122,7 @@ class AppSettings {
     required this.autoSpeak,
     required this.themePreference,
     required this.activeSessionId,
+    required this.hasSeenCoachWelcome,
   });
 
   const AppSettings.defaults()
@@ -131,7 +132,8 @@ class AppSettings {
       speechRate = 0.52,
       autoSpeak = true,
       themePreference = AppThemePreference.dark,
-      activeSessionId = null;
+      activeSessionId = null,
+      hasSeenCoachWelcome = false;
 
   final String apiKey;
   final String voiceName;
@@ -140,6 +142,7 @@ class AppSettings {
   final bool autoSpeak;
   final AppThemePreference themePreference;
   final String? activeSessionId;
+  final bool hasSeenCoachWelcome;
 
   ThemeMode get themeMode {
     switch (themePreference) {
@@ -163,6 +166,7 @@ class AppSettings {
     bool? autoSpeak,
     AppThemePreference? themePreference,
     String? activeSessionId,
+    bool? hasSeenCoachWelcome,
     bool clearActiveSessionId = false,
   }) {
     return AppSettings(
@@ -175,6 +179,7 @@ class AppSettings {
       activeSessionId: clearActiveSessionId
           ? null
           : activeSessionId ?? this.activeSessionId,
+      hasSeenCoachWelcome: hasSeenCoachWelcome ?? this.hasSeenCoachWelcome,
     );
   }
 }
@@ -392,13 +397,14 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       autoSpeak: fields[4] as bool? ?? true,
       themePreference: AppThemePreference.values[fields[5] as int? ?? 2],
       activeSessionId: fields[6] as String?,
+      hasSeenCoachWelcome: fields[7] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.apiKey)
       ..writeByte(1)
@@ -412,6 +418,8 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(5)
       ..write(obj.themePreference.index)
       ..writeByte(6)
-      ..write(obj.activeSessionId);
+      ..write(obj.activeSessionId)
+      ..writeByte(7)
+      ..write(obj.hasSeenCoachWelcome);
   }
 }

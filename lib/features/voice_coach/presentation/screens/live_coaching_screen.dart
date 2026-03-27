@@ -1,21 +1,29 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:video_player/video_player.dart';
+import 'package:video_thumbnail/video_thumbnail.dart' as vt;
 
 import '../../application/providers.dart';
 import '../../data/models/coach_models.dart';
+import '../../../tactical_board/presentation/screens/tactical_board_screen.dart';
 import '../../../tutorials/presentation/screens/tutorials_page.dart';
-import 'post_match_screen.dart';
 import 'session_history_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/scouting_overlay.dart';
 
-final _liveVideoUiStateProvider =
-    StateProvider.autoDispose<_LiveVideoUiState>((ref) {
-      return const _LiveVideoUiState();
-    });
+final _liveVideoUiStateProvider = StateProvider.autoDispose<_LiveVideoUiState>((
+  ref,
+) {
+  return const _LiveVideoUiState();
+});
+
+enum _LiveCoachMenuAction { tacticalBoard, history, tutorials, settings }
 
 class LiveCoachingScreen extends ConsumerStatefulWidget {
   const LiveCoachingScreen({super.key});
@@ -30,7 +38,15 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
   late final ScrollController _scrollController;
   late final AnimationController _pulseController;
   CameraController? _cameraController;
+  VideoPlayerController? _scoutingVideoController;
   Timer? _autoScoutTimer;
+  String? _scoutingVideoPath;
+  String _scoutingVideoLabel = 'No Video Uploaded';
+  String? _detectedReplayAction;
+  List<ScoutingEvent> _scoutingEvents = const [];
+  bool _isAnalyzingReplayFrame = false;
+  bool _isLoadingScoutingVideo = false;
+  String? _scoutingVideoError;
   int _lastMessageCount = 0;
 
   @override
@@ -52,7 +68,10 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
     _autoScoutTimer?.cancel();
     final cameraController = _cameraController;
     _cameraController = null;
+    final scoutingVideoController = _scoutingVideoController;
+    _scoutingVideoController = null;
     unawaited(cameraController?.dispose() ?? Future<void>.value());
+    unawaited(scoutingVideoController?.dispose() ?? Future<void>.value());
     _questionController.dispose();
     _scrollController.dispose();
     _pulseController.dispose();
@@ -62,6 +81,7 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final compactTopBar = MediaQuery.sizeOf(context).width < 420;
     final session = ref.watch(matchSessionProvider);
     final messages = ref.watch(chatMessagesProvider);
     final alerts = ref.watch(alertsProvider);
@@ -91,46 +111,57 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(session.matchName),
+        title: Text(
+          session.matchName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: [
-          IconButton(
-            tooltip: 'Post-match',
-            icon: const Icon(Icons.analytics_rounded),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PostMatchScreen(sessionId: session.id),
+          if (compactTopBar)
+            PopupMenuButton<_LiveCoachMenuAction>(
+              tooltip: 'More',
+              onSelected: _handleMenuAction,
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _LiveCoachMenuAction.tacticalBoard,
+                  child: Text('Tactical Board'),
                 ),
-              );
-            },
-          ),
-          IconButton(
-            tooltip: 'History',
-            icon: const Icon(Icons.history_rounded),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SessionHistoryScreen()),
-              );
-            },
-          ),
-          IconButton(
-            tooltip: 'Tutorials',
-            icon: const Icon(Icons.ondemand_video_rounded),
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const TutorialsPage()));
-            },
-          ),
-          IconButton(
-            tooltip: 'Settings',
-            icon: const Icon(Icons.tune_rounded),
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-            },
-          ),
+                PopupMenuItem(
+                  value: _LiveCoachMenuAction.history,
+                  child: Text('History'),
+                ),
+                PopupMenuItem(
+                  value: _LiveCoachMenuAction.tutorials,
+                  child: Text('Tutorials'),
+                ),
+                PopupMenuItem(
+                  value: _LiveCoachMenuAction.settings,
+                  child: Text('Settings'),
+                ),
+              ],
+            )
+          else ...[
+            IconButton(
+              tooltip: 'Tactical board',
+              icon: const Icon(Icons.dashboard_customize_rounded),
+              onPressed: _openTacticalBoard,
+            ),
+            IconButton(
+              tooltip: 'History',
+              icon: const Icon(Icons.history_rounded),
+              onPressed: _openHistory,
+            ),
+            IconButton(
+              tooltip: 'Tutorials',
+              icon: const Icon(Icons.ondemand_video_rounded),
+              onPressed: _openTutorials,
+            ),
+            IconButton(
+              tooltip: 'Settings',
+              icon: const Icon(Icons.tune_rounded),
+              onPressed: _openSettings,
+            ),
+          ],
         ],
       ),
       body: Stack(
@@ -178,19 +209,52 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
                               _LiveVideoScoutCard(
                                 controller: _cameraController,
                                 isCameraReady: liveVideoUiState.isCameraReady,
-                                isStartingCamera: liveVideoUiState.isStartingCamera,
+                                isStartingCamera:
+                                    liveVideoUiState.isStartingCamera,
                                 isAnalyzingFrame:
                                     liveVideoUiState.isAnalyzingFrame,
                                 isAutoScoutEnabled:
                                     liveVideoUiState.isAutoScoutEnabled,
                                 cameraError: liveVideoUiState.cameraError,
                                 canSwitchCamera:
-                                    liveVideoUiState.availableCameras.length > 1,
+                                    liveVideoUiState.availableCameras.length >
+                                    1,
                                 onToggleVideo: _toggleLiveVideo,
                                 onScoutFrame: _captureScoutFrame,
                                 onToggleAutoScout: _toggleAutoScout,
                                 onSwitchCamera: _switchCamera,
                                 compact: isCompact,
+                              ),
+                              SizedBox(height: isCompact ? 12 : 16),
+                              _ReplayScoutCard(
+                                controller: _scoutingVideoController,
+                                isLoading: _isLoadingScoutingVideo,
+                                isAnalyzingFrame: _isAnalyzingReplayFrame,
+                                errorMessage: _scoutingVideoError,
+                                videoLabel: _scoutingVideoLabel,
+                                hasUploadedVideo: _scoutingVideoPath != null,
+                                detectedAction: _detectedReplayAction,
+                                activeRotation: session.currentRotation.clamp(
+                                  1,
+                                  6,
+                                ),
+                                initialEvents: _scoutingEvents,
+                                onRecordEvent: (event) {
+                                  setState(() {
+                                    _scoutingEvents = [
+                                      event,
+                                      ..._scoutingEvents,
+                                    ];
+                                  });
+                                },
+                                onTogglePlayback: _toggleReplayPlayback,
+                                onSeekBack: () =>
+                                    _seekReplayBy(const Duration(seconds: -5)),
+                                onSeekForward: () =>
+                                    _seekReplayBy(const Duration(seconds: 5)),
+                                onReloadClip: _reloadScoutingVideo,
+                                onUploadVideo: _pickScoutingVideo,
+                                onScoutCurrentFrame: _captureReplayScoutFrame,
                               ),
                               SizedBox(height: isCompact ? 12 : 16),
                               _ScoreboardCard(session: session),
@@ -400,12 +464,14 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
 
       final nextController = CameraController(
         selectedCamera,
-        ResolutionPreset.medium,
+        ResolutionPreset.high,
         enableAudio: false,
       );
 
       await nextController.initialize();
       await nextController.setFlashMode(FlashMode.off);
+      await nextController.setFocusMode(FocusMode.auto);
+      await nextController.setExposureMode(ExposureMode.auto);
 
       final previousController = _cameraController;
       if (!mounted) {
@@ -486,7 +552,9 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
     try {
       final frame = await controller.takePicture();
       final bytes = await frame.readAsBytes();
-      await ref.read(coachControllerProvider).analyzeVideoFrame(bytes);
+      await ref
+          .read(coachControllerProvider)
+          .analyzeVideoFrame(bytes, sourceLabel: 'live camera frame');
     } catch (_) {
       if (!mounted) {
         return;
@@ -542,10 +610,258 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
     });
   }
 
-  _LiveVideoUiState get _liveVideoUiState => ref.read(_liveVideoUiStateProvider);
+  _LiveVideoUiState get _liveVideoUiState =>
+      ref.read(_liveVideoUiStateProvider);
 
   void _setLiveVideoUiState(_LiveVideoUiState nextState) {
     ref.read(_liveVideoUiStateProvider.notifier).state = nextState;
+  }
+
+  Future<void> _loadScoutingVideo({String? path, String? label}) async {
+    if (mounted) {
+      setState(() {
+        _isLoadingScoutingVideo = true;
+        _scoutingVideoError = null;
+        _detectedReplayAction = null;
+      });
+    }
+
+    if (path == null) {
+      final previousController = _scoutingVideoController;
+      _scoutingVideoController = null;
+      await previousController?.dispose();
+      if (mounted) {
+        setState(() {
+          _scoutingVideoPath = null;
+          _scoutingVideoLabel = 'No Video Uploaded';
+          _isLoadingScoutingVideo = false;
+          _scoutingVideoError = null;
+        });
+      }
+      return;
+    }
+
+    final controller = VideoPlayerController.file(File(path));
+
+    try {
+      await controller.initialize();
+      await controller.setLooping(true);
+
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+
+      final previousController = _scoutingVideoController;
+      setState(() {
+        _scoutingVideoController = controller;
+        _scoutingVideoPath = path;
+        _scoutingVideoLabel = label ?? 'Match Video';
+        _isLoadingScoutingVideo = false;
+      });
+      await previousController?.dispose();
+    } catch (_) {
+      await controller.dispose();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isLoadingScoutingVideo = false;
+        _scoutingVideoError =
+            'That video could not be loaded. Try another clip.';
+      });
+    }
+  }
+
+  Future<void> _reloadScoutingVideo() async {
+    if (_scoutingVideoPath == null) {
+      return;
+    }
+    await _scoutingVideoController?.pause();
+    await _loadScoutingVideo(
+      path: _scoutingVideoPath,
+      label: _scoutingVideoLabel,
+    );
+  }
+
+  Future<void> _pickScoutingVideo() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+      allowMultiple: false,
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    final file = result.files.single;
+    final path = file.path;
+    if (path == null || path.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('That video could not be opened on this device.'),
+        ),
+      );
+      return;
+    }
+
+    await _loadScoutingVideo(path: path, label: file.name);
+  }
+
+  Future<void> _toggleReplayPlayback() async {
+    final controller = _scoutingVideoController;
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+
+    if (controller.value.isPlaying) {
+      await controller.pause();
+    } else {
+      await controller.play();
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _seekReplayBy(Duration delta) async {
+    final controller = _scoutingVideoController;
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+
+    final next = controller.value.position + delta;
+    final maxPosition = controller.value.duration;
+    final safePosition = next < Duration.zero
+        ? Duration.zero
+        : next > maxPosition
+        ? maxPosition
+        : next;
+
+    await controller.seekTo(safePosition);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _captureReplayScoutFrame() async {
+    final controller = _scoutingVideoController;
+    final videoPath = _scoutingVideoPath;
+    if (_isAnalyzingReplayFrame) {
+      return;
+    }
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+    if (videoPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Upload a match video first so I can scout replay frames.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isAnalyzingReplayFrame = true;
+    });
+
+    try {
+      final frameBytes = await vt.VideoThumbnail.thumbnailData(
+        video: videoPath,
+        imageFormat: vt.ImageFormat.JPEG,
+        timeMs: controller.value.position.inMilliseconds,
+        quality: 85,
+        maxWidth: 1280,
+      );
+      if (frameBytes == null || frameBytes.isEmpty) {
+        throw StateError('No thumbnail bytes were generated.');
+      }
+
+      final response = await ref
+          .read(coachControllerProvider)
+          .analyzeVideoFrame(frameBytes, sourceLabel: 'uploaded replay frame');
+      if (mounted) {
+        setState(() {
+          _detectedReplayAction = _extractDetectedAction(response?.text);
+        });
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'I could not scout that replay frame. Try another moment in the video.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAnalyzingReplayFrame = false;
+        });
+      }
+    }
+  }
+
+  String? _extractDetectedAction(String? text) {
+    if (text == null || text.trim().isEmpty) {
+      return null;
+    }
+
+    final match = RegExp(
+      r'ACTION:\s*([^\n\r]+)',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final action = match?.group(1)?.trim();
+    if (action == null || action.isEmpty) {
+      return null;
+    }
+    if (action.toLowerCase() == 'unknown') {
+      return null;
+    }
+    return action;
+  }
+
+  void _openTacticalBoard() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const TacticalBoardScreen()));
+  }
+
+  void _openHistory() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SessionHistoryScreen()));
+  }
+
+  void _openTutorials() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const TutorialsPage()));
+  }
+
+  void _openSettings() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+  }
+
+  void _handleMenuAction(_LiveCoachMenuAction action) {
+    switch (action) {
+      case _LiveCoachMenuAction.tacticalBoard:
+        _openTacticalBoard();
+      case _LiveCoachMenuAction.history:
+        _openHistory();
+      case _LiveCoachMenuAction.tutorials:
+        _openTutorials();
+      case _LiveCoachMenuAction.settings:
+        _openSettings();
+    }
   }
 }
 
@@ -574,8 +890,15 @@ class _HeaderRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Text('Volleyball AI Coach', style: theme.textTheme.titleLarge),
-        const Spacer(),
+        Expanded(
+          child: Text(
+            'Volleyball AI Coach',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleLarge,
+          ),
+        ),
+        const SizedBox(width: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
@@ -904,7 +1227,7 @@ class _LiveVideoScoutCard extends StatelessWidget {
                           ),
                         ),
                         child: Center(
-                          child: Padding(
+                          child: SingleChildScrollView(
                             padding: const EdgeInsets.all(24),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -977,6 +1300,224 @@ class _LiveVideoScoutCard extends StatelessWidget {
   }
 }
 
+class _ReplayScoutCard extends StatelessWidget {
+  const _ReplayScoutCard({
+    required this.controller,
+    required this.isLoading,
+    required this.isAnalyzingFrame,
+    required this.errorMessage,
+    required this.videoLabel,
+    required this.hasUploadedVideo,
+    required this.detectedAction,
+    required this.activeRotation,
+    required this.initialEvents,
+    required this.onRecordEvent,
+    required this.onTogglePlayback,
+    required this.onSeekBack,
+    required this.onSeekForward,
+    required this.onReloadClip,
+    required this.onUploadVideo,
+    required this.onScoutCurrentFrame,
+  });
+
+  final VideoPlayerController? controller;
+  final bool isLoading;
+  final bool isAnalyzingFrame;
+  final String? errorMessage;
+  final String videoLabel;
+  final bool hasUploadedVideo;
+  final String? detectedAction;
+  final int activeRotation;
+  final List<ScoutingEvent> initialEvents;
+  final ValueChanged<ScoutingEvent> onRecordEvent;
+  final VoidCallback onTogglePlayback;
+  final VoidCallback onSeekBack;
+  final VoidCallback onSeekForward;
+  final VoidCallback onReloadClip;
+  final VoidCallback onUploadVideo;
+  final VoidCallback onScoutCurrentFrame;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final videoController = controller;
+    final isReady =
+        videoController != null && videoController.value.isInitialized;
+    final aspectRatio = isReady && videoController.value.aspectRatio > 0
+        ? videoController.value.aspectRatio
+        : 16 / 9;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Replay Scout + Chat',
+                    style: theme.textTheme.titleLarge,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Scout the replay, log events, and keep the coaching conversation on this same page.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _ReplaySourcePill(
+                  label: hasUploadedVideo
+                      ? 'Uploaded: $videoLabel'
+                      : videoLabel,
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: isLoading ? null : onReloadClip,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Reload Clip'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onUploadVideo,
+                  icon: const Icon(Icons.upload_file_rounded),
+                  label: Text(
+                    hasUploadedVideo ? 'Replace Video' : 'Upload Video',
+                  ),
+                ),
+              ],
+            ),
+            if ((detectedAction ?? '').isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _ReplaySourcePill(label: 'Detected: $detectedAction'),
+              ),
+            ],
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: AspectRatio(
+                aspectRatio: aspectRatio,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        theme.colorScheme.surfaceContainerHighest,
+                        theme.colorScheme.primary.withValues(alpha: 0.14),
+                      ],
+                    ),
+                  ),
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : isReady
+                      ? VideoPlayer(videoController)
+                      : Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.upload_file_rounded,
+                                  size: 42,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  errorMessage ??
+                                      'Upload a volleyball match video to scout the replay inside the app.',
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodyLarge,
+                                ),
+                                const SizedBox(height: 16),
+                                FilledButton.icon(
+                                  onPressed: onUploadVideo,
+                                  icon: const Icon(Icons.upload_rounded),
+                                  label: const Text('Upload Video To Scout'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            if (isReady) ...[
+              const SizedBox(height: 12),
+              VideoProgressIndicator(
+                videoController,
+                allowScrubbing: true,
+                colors: VideoProgressColors(
+                  playedColor: theme.colorScheme.primary,
+                  bufferedColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.24,
+                  ),
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  FilledButton.icon(
+                    onPressed: onTogglePlayback,
+                    icon: Icon(
+                      videoController.value.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                    ),
+                    label: Text(
+                      videoController.value.isPlaying ? 'Pause' : 'Play',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: onSeekBack,
+                    icon: const Icon(Icons.replay_5_rounded),
+                    label: const Text('Back 5s'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: onSeekForward,
+                    icon: const Icon(Icons.forward_5_rounded),
+                    label: const Text('Forward 5s'),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: hasUploadedVideo && !isAnalyzingFrame
+                        ? onScoutCurrentFrame
+                        : null,
+                    icon: const Icon(Icons.center_focus_strong_rounded),
+                    label: Text(
+                      isAnalyzingFrame
+                          ? 'Scouting Frame...'
+                          : 'Scout This Frame',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              ScoutingOverlay(
+                controller: videoController,
+                activeRotation: activeRotation,
+                initialEvents: initialEvents,
+                suggestedActionLabel: detectedAction,
+                onRecordEvent: onRecordEvent,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CameraPreviewSurface extends StatelessWidget {
   const _CameraPreviewSurface({required this.controller});
 
@@ -1019,6 +1560,30 @@ class _VideoOverlayChip extends StatelessWidget {
         style: Theme.of(
           context,
         ).textTheme.labelLarge?.copyWith(color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _ReplaySourcePill extends StatelessWidget {
+  const _ReplaySourcePill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.primary,
+        ),
       ),
     );
   }

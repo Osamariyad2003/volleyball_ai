@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../tactical_board/presentation/screens/tactical_board_screen.dart';
 import '../../application/providers.dart';
 import '../../../tutorials/presentation/screens/tutorials_page.dart';
 import 'session_history_screen.dart';
 import 'settings_screen.dart';
 
-final _matchSetupSelectedVoiceIdProvider =
-    StateProvider.autoDispose<String?>((ref) {
-      return null;
-    });
+final _matchSetupSelectedVoiceIdProvider = StateProvider.autoDispose<String?>((
+  ref,
+) {
+  return null;
+});
 
 final _matchSetupIsSavingProvider = StateProvider.autoDispose<bool>((ref) {
   return false;
@@ -34,8 +36,13 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     _matchNameController = TextEditingController(text: 'Friday Night Match');
     _homeController = TextEditingController(text: 'Home');
     _awayController = TextEditingController(text: 'Away');
-    ref.read(_matchSetupSelectedVoiceIdProvider.notifier).state =
-        settings.voiceId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      ref.read(_matchSetupSelectedVoiceIdProvider.notifier).state =
+          settings.voiceId;
+    });
   }
 
   @override
@@ -50,7 +57,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final settings = ref.watch(settingsProvider);
-    final hasGeminiApiKey = ref.watch(hasGeminiApiKeyProvider);
+    final hasCoachToken = ref.watch(hasCoachTokenProvider);
     final voicesAsync = ref.watch(availableVoicesProvider);
     final selectedVoiceId = ref.watch(_matchSetupSelectedVoiceIdProvider);
     final isSaving = ref.watch(_matchSetupIsSavingProvider);
@@ -91,6 +98,17 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const TutorialsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 10),
+                  _RoundActionButton(
+                    icon: Icons.dashboard_customize_rounded,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TacticalBoardScreen(),
                         ),
                       );
                     },
@@ -151,7 +169,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      'Run live sideline coaching on-device, save every rally in Hive, and let Gemini answer tactical questions in real time.',
+                      'Run live sideline coaching, save every rally in Hive, and let Hugging Face answer tactical questions and scout frames in real time.',
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: Colors.white.withValues(alpha: 0.9),
                       ),
@@ -194,7 +212,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: hasGeminiApiKey
+                          color: hasCoachToken
                               ? theme.colorScheme.primary.withValues(
                                   alpha: 0.08,
                                 )
@@ -204,9 +222,9 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: Text(
-                          hasGeminiApiKey
-                              ? 'Gemini key loaded from .env'
-                              : 'No Gemini key found. Add GEMINI_API_KEY to the project .env file.',
+                          hasCoachToken
+                              ? 'HF_TOKEN loaded from .env'
+                              : 'No HF_TOKEN found. Add a Hugging Face token to the project .env file.',
                           style: theme.textTheme.bodyMedium,
                         ),
                       ),
@@ -238,9 +256,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                                     )
                                     .toList();
                           final selected =
-                              items.any(
-                                (item) => item.value == selectedVoiceId,
-                              )
+                              items.any((item) => item.value == selectedVoiceId)
                               ? selectedVoiceId
                               : items.first.value;
                           return DropdownButtonFormField<String>(
@@ -252,9 +268,7 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                             ),
                             selectedItemBuilder: (context) {
                               final selectedItems = voices.isEmpty
-                                  ? [
-                                      settings.voiceLocale,
-                                    ]
+                                  ? [settings.voiceLocale]
                                   : voices.map((voice) => voice.label).toList();
                               return selectedItems
                                   .map(
@@ -286,10 +300,12 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
                             items: items,
                             onChanged: (value) {
                               ref
-                                  .read(
-                                    _matchSetupSelectedVoiceIdProvider.notifier,
-                                  )
-                                  .state = value;
+                                      .read(
+                                        _matchSetupSelectedVoiceIdProvider
+                                            .notifier,
+                                      )
+                                      .state =
+                                  value;
                             },
                           );
                         },
@@ -345,8 +361,8 @@ class _MatchSetupScreenState extends ConsumerState<MatchSetupScreen> {
     ref.read(_matchSetupIsSavingProvider.notifier).state = true;
 
     final currentSettings = ref.read(settingsProvider);
-    final voice = ref.read(_matchSetupSelectedVoiceIdProvider) ??
-        currentSettings.voiceId;
+    final voice =
+        ref.read(_matchSetupSelectedVoiceIdProvider) ?? currentSettings.voiceId;
     final parts = voice.split('::');
     final nextSettings = currentSettings.copyWith(
       voiceLocale: parts.isNotEmpty ? parts.first : currentSettings.voiceLocale,

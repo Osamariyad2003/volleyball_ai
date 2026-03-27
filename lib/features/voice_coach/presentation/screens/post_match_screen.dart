@@ -2,9 +2,11 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../application/providers.dart';
 import '../../data/models/coach_models.dart';
+import '../widgets/scouting_overlay.dart';
 
 class PostMatchScreen extends ConsumerStatefulWidget {
   const PostMatchScreen({super.key, required this.sessionId});
@@ -17,6 +19,10 @@ class PostMatchScreen extends ConsumerStatefulWidget {
 
 class _PostMatchScreenState extends ConsumerState<PostMatchScreen> {
   late final TextEditingController _weaknessController;
+  VideoPlayerController? _scoutingVideoController;
+  List<ScoutingEvent> _scoutingEvents = const [];
+  bool _isLoadingScoutingVideo = false;
+  String? _scoutingVideoError;
 
   @override
   void initState() {
@@ -26,6 +32,7 @@ class _PostMatchScreenState extends ConsumerState<PostMatchScreen> {
 
   @override
   void dispose() {
+    _scoutingVideoController?.dispose();
     _weaknessController.dispose();
     super.dispose();
   }
@@ -92,7 +99,7 @@ class _PostMatchScreenState extends ConsumerState<PostMatchScreen> {
                   Text('${session.homeTeam} vs ${session.awayTeam}'),
                   const SizedBox(height: 6),
                   Text(
-                    '$dateText  •  Final ${session.scoreHome}-${session.scoreAway}',
+                    '$dateText • Final ${session.scoreHome}-${session.scoreAway}',
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -132,6 +139,62 @@ class _PostMatchScreenState extends ConsumerState<PostMatchScreen> {
                   ),
                   const SizedBox(height: 14),
                   Text(latestDebrief.text),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Match Scouting Replay',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: _isLoadingScoutingVideo
+                            ? null
+                            : _reloadScoutingVideo,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Reload Clip'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Replay scouting now starts from uploaded match video in the live coach flow. Open a session and upload a clip there to scout actions and log events.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  _ScoutingReplayPlayer(
+                    controller: _scoutingVideoController,
+                    isLoading: _isLoadingScoutingVideo,
+                    errorMessage: _scoutingVideoError,
+                    onTogglePlayback: _togglePlayback,
+                    onSeekBack: () => _seekBy(const Duration(seconds: -5)),
+                    onSeekForward: () => _seekBy(const Duration(seconds: 5)),
+                  ),
+                  if (_scoutingVideoController != null &&
+                      _scoutingVideoController!.value.isInitialized) ...[
+                    const SizedBox(height: 18),
+                    ScoutingOverlay(
+                      controller: _scoutingVideoController!,
+                      activeRotation: session.currentRotation.clamp(1, 6),
+                      initialEvents: _scoutingEvents,
+                      onRecordEvent: (event) {
+                        setState(() {
+                          _scoutingEvents = [event, ..._scoutingEvents];
+                        });
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -336,6 +399,163 @@ class _PostMatchScreenState extends ConsumerState<PostMatchScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _initializeScoutingVideo() async {
+    setState(() {
+      _isLoadingScoutingVideo = false;
+      _scoutingVideoError =
+          'No replay clip is attached here. Upload a match video from the live coach screen to scout it.';
+    });
+  }
+
+  Future<void> _reloadScoutingVideo() async {
+    if (_scoutingVideoController == null) {
+      return;
+    }
+    await _scoutingVideoController?.pause();
+    await _initializeScoutingVideo();
+  }
+
+  Future<void> _togglePlayback() async {
+    final controller = _scoutingVideoController;
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+
+    if (controller.value.isPlaying) {
+      await controller.pause();
+    } else {
+      await controller.play();
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _seekBy(Duration delta) async {
+    final controller = _scoutingVideoController;
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+
+    final next = controller.value.position + delta;
+    final maxPosition = controller.value.duration;
+    final safePosition = next < Duration.zero
+        ? Duration.zero
+        : next > maxPosition
+        ? maxPosition
+        : next;
+
+    await controller.seekTo(safePosition);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+}
+
+class _ScoutingReplayPlayer extends StatelessWidget {
+  const _ScoutingReplayPlayer({
+    required this.controller,
+    required this.isLoading,
+    required this.errorMessage,
+    required this.onTogglePlayback,
+    required this.onSeekBack,
+    required this.onSeekForward,
+  });
+
+  final VideoPlayerController? controller;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback onTogglePlayback;
+  final VoidCallback onSeekBack;
+  final VoidCallback onSeekForward;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final videoController = controller;
+    final isReady =
+        videoController != null && videoController.value.isInitialized;
+    final aspectRatio = isReady && videoController.value.aspectRatio > 0
+        ? videoController.value.aspectRatio
+        : 16 / 9;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: AspectRatio(
+            aspectRatio: aspectRatio,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.surfaceContainerHighest,
+                    theme.colorScheme.primary.withValues(alpha: 0.14),
+                  ],
+                ),
+              ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : isReady
+                  ? VideoPlayer(videoController)
+                  : Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          errorMessage ??
+                              'The scouting clip could not be loaded right now.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+        ),
+        if (isReady) ...[
+          const SizedBox(height: 12),
+          VideoProgressIndicator(
+            videoController,
+            allowScrubbing: true,
+            colors: VideoProgressColors(
+              playedColor: theme.colorScheme.primary,
+              bufferedColor: theme.colorScheme.primary.withValues(alpha: 0.24),
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              FilledButton.icon(
+                onPressed: onTogglePlayback,
+                icon: Icon(
+                  videoController.value.isPlaying
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+                ),
+                label: Text(videoController.value.isPlaying ? 'Pause' : 'Play'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onSeekBack,
+                icon: const Icon(Icons.replay_5_rounded),
+                label: const Text('Back 5s'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onSeekForward,
+                icon: const Icon(Icons.forward_5_rounded),
+                label: const Text('Forward 5s'),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

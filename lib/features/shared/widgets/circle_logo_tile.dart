@@ -41,18 +41,20 @@ class CircleLogoTile extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: theme.colorScheme.surfaceContainerHighest,
                     border: Border.all(
-                      color: isSelected 
-                          ? theme.colorScheme.primary 
-                          : theme.colorScheme.outline.withOpacity(0.5),
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline.withValues(alpha: 0.5),
                       width: isSelected ? 2 : 1,
                     ),
-                    boxShadow: isSelected 
+                    boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withOpacity(0.3),
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.3,
+                              ),
                               blurRadius: 10,
                               spreadRadius: 2,
-                            )
+                            ),
                           ]
                         : null,
                   ),
@@ -81,7 +83,7 @@ class CircleLogoTile extends StatelessWidget {
                     child: const Icon(
                       Icons.star,
                       size: 10,
-                      color: Colors.black,
+                      color: Colors.white,
                     ),
                   ),
                 ),

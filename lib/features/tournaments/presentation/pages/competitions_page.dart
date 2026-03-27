@@ -26,11 +26,8 @@ class CompetitionsPage extends ConsumerWidget {
       ),
       body: competitionsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        data: (competitions) => _buildCompetitionsList(
-          context,
-          ref,
-          competitions,
-        ),
+        data: (competitions) =>
+            _buildCompetitionsList(context, ref, competitions),
         error: (error, stackTrace) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -41,7 +38,7 @@ class CompetitionsPage extends ConsumerWidget {
                 color: Theme.of(context).colorScheme.error,
               ),
               const SizedBox(height: 16),
-              Text(error.toString()),
+              Text(_displayMessage(error)),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.read(competitionsProvider.notifier).load(),
@@ -54,6 +51,16 @@ class CompetitionsPage extends ConsumerWidget {
     );
   }
 
+  String _displayMessage(Object error) {
+    if (error is StateError) {
+      return error.message;
+    }
+
+    final raw = error.toString();
+    const prefix = 'Bad state: ';
+    return raw.startsWith(prefix) ? raw.substring(prefix.length) : raw;
+  }
+
   Widget _buildCompetitionsList(
     BuildContext context,
     WidgetRef ref,
@@ -61,7 +68,9 @@ class CompetitionsPage extends ConsumerWidget {
   ) {
     final selectedFilter = ref.watch(competitionCategoryFilterProvider);
     final filteredCompetitions = competitions
-        .where((competition) => _matchesSelectedFilter(competition, selectedFilter))
+        .where(
+          (competition) => _matchesSelectedFilter(competition, selectedFilter),
+        )
         .toList();
 
     return ListView(
@@ -96,9 +105,8 @@ class CompetitionsPage extends ConsumerWidget {
                   ],
                   selected: {selectedFilter},
                   onSelectionChanged: (selection) {
-                    ref
-                        .read(competitionCategoryFilterProvider.notifier)
-                        .state = selection.first;
+                    ref.read(competitionCategoryFilterProvider.notifier).state =
+                        selection.first;
                   },
                 ),
                 const SizedBox(height: 12),
@@ -142,18 +150,11 @@ class CompetitionsPage extends ConsumerWidget {
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   trailing: IconButton(
-                    tooltip: 'Browse seasons',
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    onPressed: () => _openSeasons(context, competition),
+                    tooltip: 'Open teams',
+                    icon: const Icon(Icons.groups_rounded),
+                    onPressed: () => _openTeams(context, competition),
                   ),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            CompetitionTeamsPage(competition: competition),
-                      ),
-                    );
-                  },
+                  onTap: () => _openSeasons(context, competition),
                 ),
               ),
             ),
@@ -187,8 +188,15 @@ class CompetitionsPage extends ConsumerWidget {
   void _openSeasons(BuildContext context, CompetitionModel competition) {
     Navigator.push(
       context,
+      MaterialPageRoute(builder: (_) => SeasonsPage(competition: competition)),
+    );
+  }
+
+  void _openTeams(BuildContext context, CompetitionModel competition) {
+    Navigator.push(
+      context,
       MaterialPageRoute(
-        builder: (_) => SeasonsPage(competition: competition),
+        builder: (_) => CompetitionTeamsPage(competition: competition),
       ),
     );
   }

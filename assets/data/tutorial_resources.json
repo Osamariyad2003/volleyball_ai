@@ -64,6 +64,20 @@
       "url": "https://www.betteratbeach.com/volleyball-drills",
       "source": "betteratbeach.com [web:11]",
       "focus": "competitive"
+    },
+    {
+      "id": 4,
+      "title": "Youth Volleyball Drills: Collection 1",
+      "url": "https://www.theartofcoachingvolleyball.com/youthdb1/",
+      "source": "theartofcoachingvolleyball.com",
+      "focus": "youth fundamentals"
+    },
+    {
+      "id": 5,
+      "title": "500+ Defense Drills",
+      "url": "https://volleyballxl.com/drills/defense/",
+      "source": "volleyballxl.com",
+      "focus": "defense"
     }
   ],
   "servingResources": [
@@ -87,6 +101,20 @@
       "url": "https://jvavolleyball.org/serving-drills-train-proper-technique-eliminate-bad-habits/",
       "description": "Consistency drills [web:42]",
       "level": "beginner"
+    },
+    {
+      "id": 4,
+      "title": "Four Corners Pre-Game Warmup",
+      "url": "https://www.theartofcoachingvolleyball.com/four-corners-pre-game-warmup-for-servers-and-passers/",
+      "description": "Serving and passing warmup progression",
+      "level": "all"
+    },
+    {
+      "id": 5,
+      "title": "Wave Serve Receive Drill",
+      "url": "https://www.theartofcoachingvolleyball.com/wave-serve-receive-drill/",
+      "description": "Fast-paced serving and serve-receive reps",
+      "level": "intermediate"
     }
   ],
   "settingResources": [
@@ -96,6 +124,27 @@
       "url": "https://www.youtube.com/watch?v=kLuxE4nUQwg",
       "description": "Self to partner [web:46]",
       "level": "beginner-intermediate"
+    },
+    {
+      "id": 2,
+      "title": "Beat the Coach Dig-Set Drill",
+      "url": "https://www.theartofcoachingvolleyball.com/beat-the-coach-dig-set-drill-for-setters/",
+      "description": "Neutral body position and second-ball decisions",
+      "level": "beginner-intermediate"
+    },
+    {
+      "id": 3,
+      "title": "4-Person Setting Drill for Non-Setters",
+      "url": "https://www.theartofcoachingvolleyball.com/setting-drill-for-non-setters/",
+      "description": "Train emergency setting across the team",
+      "level": "intermediate"
+    },
+    {
+      "id": 4,
+      "title": "Imperfect Pass Back Setting Drill",
+      "url": "https://www.theartofcoachingvolleyball.com/imperfect-pass-back-setting-drill/",
+      "description": "Practice back sets from off the net",
+      "level": "intermediate"
     }
   ],
   "spikingResources": [
@@ -105,6 +154,27 @@
       "url": "https://kbandstraining.com/volleyball-drills-for-improved-spiking/",
       "description": "Approach jumps [web:47]",
       "level": "intermediate"
+    },
+    {
+      "id": 2,
+      "title": "Teach Spiking to Beginners and Intermediates",
+      "url": "https://www.theartofcoachingvolleyball.com/teaching-spiking-to-beginnersintermediates/",
+      "description": "Step-by-step hitting instruction for newer players",
+      "level": "beginner-intermediate"
+    },
+    {
+      "id": 3,
+      "title": "Self-Toss Hitting Drill",
+      "url": "https://www.theartofcoachingvolleyball.com/self-toss-hitting-drill/",
+      "description": "Work on contact, approach, and shot selection",
+      "level": "intermediate"
+    },
+    {
+      "id": 4,
+      "title": "Volleyball Approach Guide",
+      "url": "https://volleyballxl.com/approach-volleyball/",
+      "description": "Footwork, timing, and attacking technique",
+      "level": "beginner-advanced"
     }
   ],
   "blockingResources": [
@@ -114,6 +184,27 @@
       "url": "https://www.allvolleyball.com/blogs/news/the-ultimate-guide-to-blocking-in-volleyball",
       "description": "Mirror drills [web:48]",
       "level": "all"
+    },
+    {
+      "id": 2,
+      "title": "Blocking Warmup Without Ball",
+      "url": "https://www.theartofcoachingvolleyball.com/blocking-warm-up-without-ball/",
+      "description": "Footwork and communication before live reps",
+      "level": "all"
+    },
+    {
+      "id": 3,
+      "title": "Basic Blocking Footwork",
+      "url": "https://coachingvb.com/drill-basic-blocking-footwork/",
+      "description": "Foundational movement patterns for blockers",
+      "level": "beginner-intermediate"
+    },
+    {
+      "id": 4,
+      "title": "Volleyball Block Coverage",
+      "url": "https://volleyballxl.com/volleyball-block-coverage/",
+      "description": "Coverage roles and continuation after blocked attacks",
+      "level": "intermediate-advanced"
     }
   ],
   "diggingDefenseResources": [
@@ -137,6 +228,13 @@
       "url": "https://coachingvb.com/drill-continuous-cross-court-digging/",
       "description": "High-intensity fitness [web:55]",
       "level": "intermediate"
+    },
+    {
+      "id": 4,
+      "title": "Volleyball Defense Drills and Training",
+      "url": "https://volleyballxl.com/drills/defense/",
+      "description": "Large defense library with positioning and scenario ideas",
+      "level": "all"
     }
   ],
   "warmUpResources": [
@@ -145,6 +243,27 @@
       "title": "Warm-Up Drills",
       "url": "https://planet.training/volleyball-training/drills-warm-up",
       "description": "Shuffles, star drill [web:57]",
+      "level": "all"
+    },
+    {
+      "id": 2,
+      "title": "Coach on Three Warmup Drill",
+      "url": "https://www.theartofcoachingvolleyball.com/coach-on-three-warm-up-drill-with-genny-volpe/",
+      "description": "Voice, movement, and defensive readiness",
+      "level": "all"
+    },
+    {
+      "id": 3,
+      "title": "Partner Coordination Warmup Drills",
+      "url": "https://www.theartofcoachingvolleyball.com/partner-coordination-warm-up-drills/",
+      "description": "Coordination-based warmup with ball control",
+      "level": "all"
+    },
+    {
+      "id": 4,
+      "title": "Multiple Skill Warmup for Groups of Three",
+      "url": "https://www.theartofcoachingvolleyball.com/multiple-skill-warmup-drill-for-groups-of-three/",
+      "description": "Concurrent serving, passing, and setting reps",
       "level": "all"
     }
   ],
@@ -155,6 +274,20 @@
       "url": "https://valleyathletics.co/blog/volleyball-conditioning-drills/",
       "description": "Box jumps, planks [web:58]",
       "level": "all"
+    },
+    {
+      "id": 2,
+      "title": "Plyometric Drills for Jump and Block",
+      "url": "https://volleyballxl.com/drills/plyometrics/",
+      "description": "Explosive jump and block-focused plyometric ideas",
+      "level": "intermediate-advanced"
+    },
+    {
+      "id": 3,
+      "title": "Core Stability Volleyball Drills",
+      "url": "https://volleyballxl.com/drills/core-stability/",
+      "description": "Stability work that transfers to hitting and defense",
+      "level": "all"
     }
   ],
   "teamBuildingResources": [
@@ -164,6 +297,20 @@
       "url": "https://coachingvb.com/volleyball-team-building-drills/",
       "description": "Cooperative 3s [web:59]",
       "level": "all"
+    },
+    {
+      "id": 2,
+      "title": "Volleyball Celebration Drill",
+      "url": "https://www.theartofcoachingvolleyball.com/volleyball-celebration-drill-with-genny-volpe/",
+      "description": "Energy and connection through competitive team play",
+      "level": "all"
+    },
+    {
+      "id": 3,
+      "title": "Unclear Objectives Drill",
+      "url": "https://www.theartofcoachingvolleyball.com/unclear-objectives-drill/",
+      "description": "Communication and decision-making under pressure",
+      "level": "intermediate-advanced"
     }
   ],
   "advancedResources": [
@@ -172,6 +319,20 @@
       "title": "Elite Drills",
       "url": "https://gmtm.com/articles/elevating-your-game-advanced-volleyball-drills-for-elite-athletes",
       "description": "Transition, spins [web:49]",
+      "level": "advanced"
+    },
+    {
+      "id": 2,
+      "title": "1v1 Hitter Isolation",
+      "url": "https://www.theartofcoachingvolleyball.com/team-drill-1v1-hitter-isolation/",
+      "description": "Pressure-based 6v6 drill focused on a single attacker",
+      "level": "advanced"
+    },
+    {
+      "id": 3,
+      "title": "Hitting on the Clock",
+      "url": "https://volleyballxl.com/how-varying-hitting-directions-make-your-hitter-harder-to-block/",
+      "description": "Train line and cross-court attacking variation",
       "level": "advanced"
     }
   ],
@@ -182,6 +343,27 @@
       "url": "https://www.theartofcoachingvolleyball.com/first-time-coach/",
       "source": "theartofcoachingvolleyball.com [web:9]",
       "focus": "structure"
+    },
+    {
+      "id": 2,
+      "title": "Practice Planning and Warm-Ups",
+      "url": "https://coachingvb.com/start-here/practice-planning/",
+      "source": "coachingvb.com",
+      "focus": "practice planning"
+    },
+    {
+      "id": 3,
+      "title": "4-Week Practice Plan",
+      "url": "https://www.theartofcoachingvolleyball.com/4-week-practice-plan/",
+      "source": "theartofcoachingvolleyball.com",
+      "focus": "season planning"
+    },
+    {
+      "id": 4,
+      "title": "Volleyball Coaching Tips",
+      "url": "https://volleyballxl.com/volleyball-coaching-tips-strengthen-your-coaching-skills/",
+      "source": "volleyballxl.com",
+      "focus": "coach development"
     }
   ]
 }

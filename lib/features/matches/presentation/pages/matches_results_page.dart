@@ -22,8 +22,9 @@ class MatchesResultsPage extends ConsumerWidget {
       body: matchesAsync.when(
         loading: () => const ListSkeleton(itemCount: 8),
         error: (error, stackTrace) => ErrorView(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(seasonMatchesResultsProvider(season.id)),
+          message: _displayMessage(error),
+          onRetry: () =>
+              ref.invalidate(seasonMatchesResultsProvider(season.id)),
         ),
         data: (matches) {
           if (matches.isEmpty) {
@@ -53,6 +54,16 @@ class MatchesResultsPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _displayMessage(Object error) {
+  if (error is StateError) {
+    return error.message;
+  }
+
+  final raw = error.toString();
+  const prefix = 'Bad state: ';
+  return raw.startsWith(prefix) ? raw.substring(prefix.length) : raw;
 }
 
 class _MatchesHeader extends StatelessWidget {

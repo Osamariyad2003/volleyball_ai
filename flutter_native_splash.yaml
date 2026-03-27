@@ -1,5 +1,5 @@
 flutter_native_splash:
-  color: "#0A0B0D"
+  color: "#0B3B2E"
   image: assets/icons/splash-logo.png
   android: true
   ios: true
@@ -7,4 +7,4 @@ flutter_native_splash:
 
   android_12:
     image: assets/icons/splash-logo.png
-    color: "#0A0B0D"
+    color: "#0B3B2E"

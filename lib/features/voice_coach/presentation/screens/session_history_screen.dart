@@ -116,7 +116,7 @@ class _SessionCard extends StatelessWidget {
               children: [
                 FilledButton.tonal(
                   onPressed: onView,
-                  child: const Text('View'),
+                  child: const Text('Review & Scout'),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(onPressed: onResume, child: const Text('Resume')),

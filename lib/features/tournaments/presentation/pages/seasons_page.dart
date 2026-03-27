@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vollyball_stats/features/matches/presentation/pages/matches_results_page.dart';
+import 'package:vollyball_stats/features/shared/widgets/empty_view.dart';
 import 'package:vollyball_stats/features/shared/widgets/error_view.dart';
 import 'package:vollyball_stats/features/shared/widgets/loading_skeleton.dart';
 import 'package:vollyball_stats/features/teams/presentation/pages/competitors_page.dart';
@@ -21,26 +22,55 @@ class SeasonsPage extends ConsumerWidget {
       appBar: AppBar(title: Text('${competition.name} Seasons')),
       body: seasonsAsync.when(
         loading: () => const ListSkeleton(itemCount: 6),
-        data: (seasons) => ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          itemCount: seasons.length + 1,
-          separatorBuilder: (_, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return _SeasonIntroCard(competition: competition);
-            }
+        data: (seasons) {
+          if (seasons.isEmpty) {
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              children: [
+                _SeasonIntroCard(competition: competition),
+                const SizedBox(height: 16),
+                const EmptyView(
+                  title: 'No Seasons Found',
+                  message:
+                      'This competition does not have any published seasons right now.',
+                  icon: Icons.calendar_month_rounded,
+                ),
+              ],
+            );
+          }
 
-            final season = seasons[index - 1];
-            return _SeasonCard(season: season);
-          },
-        ),
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            itemCount: seasons.length + 1,
+            separatorBuilder: (_, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return _SeasonIntroCard(competition: competition);
+              }
+
+              final season = seasons[index - 1];
+              return _SeasonCard(season: season);
+            },
+          );
+        },
         error: (error, stackTrace) => ErrorView(
-          message: error.toString(),
-          onRetry: () => ref.read(seasonsProvider(competition.id).notifier).load(),
+          message: _displayMessage(error),
+          onRetry: () =>
+              ref.read(seasonsProvider(competition.id).notifier).load(),
         ),
       ),
     );
   }
+}
+
+String _displayMessage(Object error) {
+  if (error is StateError) {
+    return error.message;
+  }
+
+  final raw = error.toString();
+  const prefix = 'Bad state: ';
+  return raw.startsWith(prefix) ? raw.substring(prefix.length) : raw;
 }
 
 class _SeasonIntroCard extends StatelessWidget {
@@ -90,7 +120,7 @@ class _SeasonIntroCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Choose a season to open its teams.',
+            'Choose a season to open its teams or matches.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
             ),

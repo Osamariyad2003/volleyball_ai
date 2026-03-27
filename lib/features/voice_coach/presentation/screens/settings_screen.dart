@@ -35,17 +35,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     final settings = ref.read(settingsProvider);
-    ref.read(_settingsSelectedVoiceIdProvider.notifier).state = settings.voiceId;
-    ref.read(_settingsSpeechRateProvider.notifier).state = settings.speechRate;
-    ref.read(_settingsAutoSpeakProvider.notifier).state = settings.autoSpeak;
-    ref.read(_settingsThemePreferenceProvider.notifier).state =
-        settings.themePreference;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      ref.read(_settingsSelectedVoiceIdProvider.notifier).state =
+          settings.voiceId;
+      ref.read(_settingsSpeechRateProvider.notifier).state =
+          settings.speechRate;
+      ref.read(_settingsAutoSpeakProvider.notifier).state = settings.autoSpeak;
+      ref.read(_settingsThemePreferenceProvider.notifier).state =
+          settings.themePreference;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
-    final hasGeminiApiKey = ref.watch(hasGeminiApiKeyProvider);
+    final hasCoachToken = ref.watch(hasCoachTokenProvider);
     final voicesAsync = ref.watch(availableVoicesProvider);
     final selectedVoiceId = ref.watch(_settingsSelectedVoiceIdProvider);
     final speechRate = ref.watch(_settingsSpeechRateProvider);
@@ -64,7 +71,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Gemini & Voice',
+                    'Hugging Face & Voice',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 14),
@@ -72,7 +79,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: hasGeminiApiKey
+                      color: hasCoachToken
                           ? Theme.of(
                               context,
                             ).colorScheme.primary.withValues(alpha: 0.08)
@@ -80,9 +87,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Text(
-                      hasGeminiApiKey
-                          ? 'Gemini is configured from the root .env file.'
-                          : 'Gemini is not configured. Add GEMINI_API_KEY to .env, then restart the app.',
+                      hasCoachToken
+                          ? 'HF_TOKEN is configured from the root .env file.'
+                          : 'Hugging Face is not configured. Add HF_TOKEN to .env, then restart the app.',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -128,9 +135,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         selectedItemBuilder: (context) {
                           final selectedItems = items.isEmpty
-                              ? [
-                                  settings.voiceLocale,
-                                ]
+                              ? [settings.voiceLocale]
                               : voices.map((voice) => voice.label).toList();
                           return selectedItems
                               .map(
@@ -159,8 +164,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         onChanged: (value) {
                           ref
-                              .read(_settingsSelectedVoiceIdProvider.notifier)
-                              .state = value;
+                                  .read(
+                                    _settingsSelectedVoiceIdProvider.notifier,
+                                  )
+                                  .state =
+                              value;
                         },
                       );
                     },
@@ -222,8 +230,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     selected: {themePreference ?? settings.themePreference},
                     onSelectionChanged: (selection) {
                       ref
-                          .read(_settingsThemePreferenceProvider.notifier)
-                          .state = selection.first;
+                              .read(_settingsThemePreferenceProvider.notifier)
+                              .state =
+                          selection.first;
                     },
                   ),
                 ],

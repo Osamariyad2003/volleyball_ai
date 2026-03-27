@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/models/ai_chat_message.dart';
 
@@ -149,7 +150,9 @@ class _AssistantWorkoutContent extends StatelessWidget {
       return _WorkoutPlanCanvas(plan: workoutPlan);
     }
 
-    if (sections.any((section) => section.type != _WorkoutSectionType.plainText)) {
+    if (sections.any(
+      (section) => section.type != _WorkoutSectionType.plainText,
+    )) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -292,9 +295,9 @@ class _AssistantWorkoutContent extends StatelessWidget {
     for (var index = 0; index < lines.length; index++) {
       final line = lines[index];
       final nextLine = index + 1 < lines.length ? lines[index + 1] : null;
-      final sectionHeaderMatch = RegExp(r'^([A-Za-z -]+)\s*:\s*$').firstMatch(
-        line,
-      );
+      final sectionHeaderMatch = RegExp(
+        r'^([A-Za-z -]+)\s*:\s*$',
+      ).firstMatch(line);
       if (sectionHeaderMatch != null) {
         final normalizedLabel = _normalizeLabel(
           sectionHeaderMatch.group(1) ?? '',
@@ -397,7 +400,8 @@ class _AssistantWorkoutContent extends StatelessWidget {
                   section.items[index],
                   forceBullet: true,
                 ),
-                if (index != section.items.length - 1) const SizedBox(height: 8),
+                if (index != section.items.length - 1)
+                  const SizedBox(height: 8),
               ],
             ],
           ),
@@ -430,7 +434,8 @@ class _AssistantWorkoutContent extends StatelessWidget {
                   section.items[index],
                   forceBullet: section.label == 'Exercises',
                 ),
-                if (index != section.items.length - 1) const SizedBox(height: 8),
+                if (index != section.items.length - 1)
+                  const SizedBox(height: 8),
               ],
             ],
           ),
@@ -447,7 +452,8 @@ class _AssistantWorkoutContent extends StatelessWidget {
   }) {
     final theme = Theme.of(context);
     final bulletText = _stripBulletPrefix(line);
-    final shouldUseBullet = forceBullet || _isBullet(line) || !line.contains(':');
+    final shouldUseBullet =
+        forceBullet || _isBullet(line) || !line.contains(':');
 
     if (shouldUseBullet) {
       return Row(
@@ -608,12 +614,16 @@ class _AssistantWorkoutContent extends StatelessWidget {
   }
 
   bool _looksLikeWorkoutBlockHeader(String line, String? nextLine) {
-    if (nextLine == null || line.isEmpty || _isBullet(line) || line.contains(':')) {
+    if (nextLine == null ||
+        line.isEmpty ||
+        _isBullet(line) ||
+        line.contains(':')) {
       return false;
     }
 
     final normalized = _normalizeLabel(line);
-    final looksLikeBlock = normalized.contains('warm-up') ||
+    final looksLikeBlock =
+        normalized.contains('warm-up') ||
         normalized.contains('warm up') ||
         normalized.contains('warmup') ||
         normalized.contains('cooldown') ||
@@ -935,10 +945,7 @@ class _ExercisesPlanCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           for (var index = 0; index < exercises.length; index++) ...[
-            _ExerciseListItem(
-              index: index + 1,
-              text: exercises[index],
-            ),
+            _ExerciseListItem(index: index + 1, text: exercises[index]),
             if (index != exercises.length - 1) const SizedBox(height: 10),
           ],
         ],
@@ -960,7 +967,9 @@ class _ExerciseListItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.45,
+        ),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -984,17 +993,75 @@ class _ExerciseListItem extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface,
-                height: 1.35,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  text,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                FilledButton.tonalIcon(
+                  onPressed: () => _openVideoSearch(context),
+                  icon: const Icon(Icons.smart_display_rounded, size: 18),
+                  label: const Text('Watch Video'),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _openVideoSearch(BuildContext context) async {
+    final didLaunch = await launchUrl(
+      _buildYoutubeSearchUri(),
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!didLaunch && context.mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Unable to open YouTube right now.')),
+        );
+    }
+  }
+
+  Uri _buildYoutubeSearchUri() {
+    return Uri.https('www.youtube.com', '/results', {
+      'search_query': 'volleyball ${_searchTopic(text)} tutorial',
+    });
+  }
+
+  String _searchTopic(String value) {
+    final compact = value
+        .replaceAll(RegExp(r'\([^)]*\)'), '')
+        .replaceAll(RegExp(r'\b\d+\s*[xX]\s*\d+.*$'), '')
+        .replaceAll(
+          RegExp(
+            r'\b\d+\s*(reps?|sets?|sec|secs|seconds?|min|mins|minutes?)\b.*$',
+          ),
+          '',
+        )
+        .trim();
+
+    final primarySegment = compact
+        .split(RegExp(r'\s[-:|]\s|[-:|]'))
+        .first
+        .trim();
+    return primarySegment.isEmpty ? value.trim() : primarySegment;
   }
 }
 

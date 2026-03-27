@@ -3,10 +3,11 @@ import 'dart:typed_data';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'package:vibration/vibration.dart';
 
-import '../data/gemini_coach_service.dart';
+import '../data/hugging_face_coach_service.dart';
 import '../data/models/coach_models.dart';
 import '../data/services/alert_service.dart';
 import '../data/session_storage_service.dart';
@@ -30,16 +31,25 @@ final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((
   return SettingsNotifier(ref.read(storageServiceProvider));
 });
 
-final apiKeyProvider = Provider<String>((ref) {
-  return dotenv.env['GEMINI_API_KEY']?.trim() ?? '';
+final coachTokenProvider = Provider<String>((ref) {
+  return dotenv.env['HF_TOKEN']?.trim() ?? '';
 });
 
-final hasGeminiApiKeyProvider = Provider<bool>((ref) {
-  return ref.watch(apiKeyProvider).isNotEmpty;
+final hasCoachTokenProvider = Provider<bool>((ref) {
+  return ref.watch(coachTokenProvider).isNotEmpty;
 });
 
-final coachServiceProvider = Provider<GeminiCoachService>((ref) {
-  return GeminiCoachService(ref.watch(apiKeyProvider));
+final coachHttpClientProvider = Provider<http.Client>((ref) {
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return client;
+});
+
+final coachServiceProvider = Provider<HuggingFaceCoachService>((ref) {
+  return HuggingFaceCoachService(
+    client: ref.watch(coachHttpClientProvider),
+    token: ref.watch(coachTokenProvider),
+  );
 });
 
 final voiceServiceProvider = Provider<VoiceService>((ref) {
@@ -114,6 +124,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     bool? autoSpeak,
     AppThemePreference? themePreference,
     String? activeSessionId,
+    bool? hasSeenCoachWelcome,
     bool clearActiveSessionId = false,
   }) async {
     final next = state.copyWith(
@@ -123,6 +134,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       autoSpeak: autoSpeak,
       themePreference: themePreference,
       activeSessionId: activeSessionId,
+      hasSeenCoachWelcome: hasSeenCoachWelcome,
       clearActiveSessionId: clearActiveSessionId,
     );
     await save(next);
@@ -473,19 +485,22 @@ class CoachController {
     }
   }
 
-  Future<void> analyzeVideoFrame(Uint8List imageBytes) async {
+  Future<CoachResponse?> analyzeVideoFrame(
+    Uint8List imageBytes, {
+    String sourceLabel = 'live video frame',
+  }) async {
     final session = _currentSession;
     if (session == null || imageBytes.isEmpty) {
-      return;
+      return null;
     }
 
     ref.read(isLoadingProvider.notifier).state = true;
     ref.read(liveTranscriptProvider.notifier).state =
-        'Analyzing live video frame...';
+        'Analyzing $sourceLabel...';
 
     final response = await ref
         .read(coachServiceProvider)
-        .analyzeVideoFrame(session, imageBytes);
+        .analyzeVideoFrame(session, imageBytes, sourceLabel: sourceLabel);
 
     final aiMessage = ChatMessage(
       id: _uuid.v4(),
@@ -510,6 +525,8 @@ class CoachController {
     if (ref.read(settingsProvider).autoSpeak) {
       await ref.read(voiceServiceProvider).speak(response.text);
     }
+
+    return response;
   }
 
   Future<void> replayMessage(ChatMessage message) async {
