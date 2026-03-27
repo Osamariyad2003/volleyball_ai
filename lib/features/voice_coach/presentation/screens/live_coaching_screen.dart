@@ -23,7 +23,13 @@ final _liveVideoUiStateProvider = StateProvider.autoDispose<_LiveVideoUiState>((
   return const _LiveVideoUiState();
 });
 
-enum _LiveCoachMenuAction { tacticalBoard, history, tutorials, settings }
+enum _LiveCoachMenuAction {
+  resetChat,
+  tacticalBoard,
+  history,
+  tutorials,
+  settings,
+}
 
 class LiveCoachingScreen extends ConsumerStatefulWidget {
   const LiveCoachingScreen({super.key});
@@ -123,6 +129,10 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
               onSelected: _handleMenuAction,
               itemBuilder: (context) => const [
                 PopupMenuItem(
+                  value: _LiveCoachMenuAction.resetChat,
+                  child: Text('Reset Chat'),
+                ),
+                PopupMenuItem(
                   value: _LiveCoachMenuAction.tacticalBoard,
                   child: Text('Tactical Board'),
                 ),
@@ -141,6 +151,11 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
               ],
             )
           else ...[
+            IconButton(
+              tooltip: 'Reset chat',
+              icon: const Icon(Icons.restart_alt_rounded),
+              onPressed: _confirmResetChat,
+            ),
             IconButton(
               tooltip: 'Tactical board',
               icon: const Icon(Icons.dashboard_customize_rounded),
@@ -853,6 +868,8 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
 
   void _handleMenuAction(_LiveCoachMenuAction action) {
     switch (action) {
+      case _LiveCoachMenuAction.resetChat:
+        _confirmResetChat();
       case _LiveCoachMenuAction.tacticalBoard:
         _openTacticalBoard();
       case _LiveCoachMenuAction.history:
@@ -862,6 +879,43 @@ class _LiveCoachingScreenState extends ConsumerState<LiveCoachingScreen>
       case _LiveCoachMenuAction.settings:
         _openSettings();
     }
+  }
+
+  Future<void> _confirmResetChat() async {
+    final shouldReset = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reset chat?'),
+          content: const Text(
+            'This clears the current coach conversation and follow-up chips for this match.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Reset'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldReset != true || !mounted) {
+      return;
+    }
+
+    await ref.read(coachControllerProvider).resetChat();
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Chat reset.')));
   }
 }
 

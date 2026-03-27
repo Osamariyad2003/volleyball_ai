@@ -197,6 +197,7 @@ class CoachController {
   CoachController(this.ref);
 
   final Ref ref;
+  int _chatGeneration = 0;
 
   MatchSession? get _currentSession => ref.read(matchSessionProvider);
 
@@ -339,6 +340,7 @@ class CoachController {
     if (session == null || trimmed.isEmpty) {
       return;
     }
+    final chatGeneration = _chatGeneration;
 
     ref.read(isLoadingProvider.notifier).state = true;
     ref.read(liveTranscriptProvider.notifier).state = trimmed;
@@ -362,6 +364,11 @@ class CoachController {
     final response = await ref
         .read(coachServiceProvider)
         .askLive(sessionWithQuestion, trimmed);
+
+    if (chatGeneration != _chatGeneration) {
+      ref.read(isLoadingProvider.notifier).state = false;
+      return;
+    }
 
     final aiMessage = ChatMessage(
       id: _uuid.v4(),
@@ -392,9 +399,16 @@ class CoachController {
     if (session == null) {
       return;
     }
+    final chatGeneration = _chatGeneration;
 
     ref.read(isLoadingProvider.notifier).state = true;
     final response = await ref.read(coachServiceProvider).quickTimeout(session);
+
+    if (chatGeneration != _chatGeneration) {
+      ref.read(isLoadingProvider.notifier).state = false;
+      return;
+    }
+
     final aiMessage = ChatMessage(
       id: _uuid.v4(),
       role: 'ai',
@@ -424,9 +438,16 @@ class CoachController {
     if (session == null) {
       return;
     }
+    final chatGeneration = _chatGeneration;
 
     ref.read(isLoadingProvider.notifier).state = true;
     final response = await ref.read(coachServiceProvider).debrief(session);
+
+    if (chatGeneration != _chatGeneration) {
+      ref.read(isLoadingProvider.notifier).state = false;
+      return;
+    }
+
     final aiMessage = ChatMessage(
       id: _uuid.v4(),
       role: 'ai',
@@ -456,11 +477,17 @@ class CoachController {
     if (session == null || trimmed.isEmpty) {
       return;
     }
+    final chatGeneration = _chatGeneration;
 
     ref.read(isLoadingProvider.notifier).state = true;
     final response = await ref
         .read(coachServiceProvider)
         .drillForWeakness(session, trimmed);
+
+    if (chatGeneration != _chatGeneration) {
+      ref.read(isLoadingProvider.notifier).state = false;
+      return;
+    }
 
     final aiMessage = ChatMessage(
       id: _uuid.v4(),
@@ -493,6 +520,7 @@ class CoachController {
     if (session == null || imageBytes.isEmpty) {
       return null;
     }
+    final chatGeneration = _chatGeneration;
 
     ref.read(isLoadingProvider.notifier).state = true;
     ref.read(liveTranscriptProvider.notifier).state =
@@ -501,6 +529,12 @@ class CoachController {
     final response = await ref
         .read(coachServiceProvider)
         .analyzeVideoFrame(session, imageBytes, sourceLabel: sourceLabel);
+
+    if (chatGeneration != _chatGeneration) {
+      ref.read(isLoadingProvider.notifier).state = false;
+      ref.read(liveTranscriptProvider.notifier).state = '';
+      return null;
+    }
 
     final aiMessage = ChatMessage(
       id: _uuid.v4(),
@@ -569,6 +603,26 @@ class CoachController {
     await ref.read(voiceServiceProvider).stopListening();
     ref.read(isListeningProvider.notifier).state = false;
     ref.read(liveTranscriptProvider.notifier).state = '';
+  }
+
+  Future<void> resetChat() async {
+    final session = _currentSession;
+    if (session == null) {
+      return;
+    }
+
+    _chatGeneration++;
+    await ref.read(voiceServiceProvider).stopListening();
+    await ref.read(voiceServiceProvider).stopSpeaking();
+
+    ref.read(isListeningProvider.notifier).state = false;
+    ref.read(isLoadingProvider.notifier).state = false;
+    ref.read(liveTranscriptProvider.notifier).state = '';
+    ref.read(followupSuggestionsProvider.notifier).state = defaultFollowups;
+
+    await _persistSession(
+      session.copyWith(conversation: const [], coachingMode: 'live'),
+    );
   }
 
   Future<void> saveSettings(AppSettings settings) async {
