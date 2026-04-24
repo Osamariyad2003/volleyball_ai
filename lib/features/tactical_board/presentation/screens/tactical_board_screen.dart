@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+# Split file into smaller modules:
+# - Extract related functions to separate files
+# - Use classes to organize code
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
